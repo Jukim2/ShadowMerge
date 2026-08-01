@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#111827" />
+  <title>Shadow Forge — 그림자 퍼즐 레벨 에디터</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div>
+        <h1>Shadow Forge</h1>
+        <p>모든 광원이 모든 오브젝트에 물리적으로 영향을 주는 그림자 퍼즐 에디터</p>
+      </div>
+      <div class="top-actions">
+        <button id="modeBtn" class="button secondary">플레이 모드</button>
+        <button id="saveBtn" class="button secondary">레벨 저장</button>
+        <label class="button secondary file-button">레벨 불러오기<input id="levelFile" type="file" accept="application/json" /></label>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <section class="stage-panel">
+        <div id="stage" class="stage" aria-label="3D 그림자 퍼즐 장면"></div>
+        <div class="stage-hud">
+          <div class="score-card">
+            <span>일치도</span>
+            <strong id="scoreValue">0.0</strong><small>%</small>
+          </div>
+          <div class="hud-message" id="hudMessage">목표 SVG를 고르고 광원과 오브젝트를 조절하세요.</div>
+        </div>
+        <div class="camera-actions">
+          <button id="frontViewBtn" class="icon-button" title="정면 보기">정면</button>
+          <button id="angleViewBtn" class="icon-button" title="사선 보기">사선</button>
+        </div>
+      </section>
+
+      <aside class="inspector">
+        <nav class="tabs" aria-label="편집 메뉴">
+          <button class="tab active" data-tab="target">목표</button>
+          <button class="tab" data-tab="lights">광원</button>
+          <button class="tab" data-tab="objects">오브젝트</button>
+          <button class="tab" data-tab="generator">자동 생성</button>
+        </nav>
+
+        <div class="tab-page active" id="tab-target">
+          <section class="card">
+            <h2>목표 실루엣</h2>
+            <label class="field">
+              <span>내장 소재</span>
+              <select id="targetSelect"></select>
+            </label>
+            <label class="button primary wide file-button">SVG / PNG 업로드<input id="targetFile" type="file" accept="image/svg+xml,image/png,image/jpeg,image/webp" /></label>
+            <div class="preview-grid">
+              <figure><canvas id="targetPreview" width="160" height="240"></canvas><figcaption>목표</figcaption></figure>
+              <figure><canvas id="shadowPreview" width="160" height="240"></canvas><figcaption>현재 그림자</figcaption></figure>
+            </div>
+            <div class="button-row">
+              <button id="captureTargetBtn" class="button secondary">현재 그림자를 목표로 캡처</button>
+              <button id="invertTargetBtn" class="button ghost">반전</button>
+            </div>
+            <p class="help">SVG 역산은 근사 최적화입니다. 정답 보장형 레벨은 먼저 장면을 만든 뒤 물리 그림자를 목표로 캡처합니다.</p>
+          </section>
+        </div>
+
+        <div class="tab-page" id="tab-lights">
+          <section class="card">
+            <div class="section-title"><h2>광원</h2><span class="pill">모두 → 모든 오브젝트</span></div>
+            <div id="lightControls"></div>
+          </section>
+        </div>
+
+        <div class="tab-page" id="tab-objects">
+          <section class="card">
+            <div class="section-title">
+              <h2>오브젝트 조합</h2>
+              <button id="addObjectBtn" class="button small primary">+ 추가</button>
+            </div>
+            <div id="objectList" class="object-list"></div>
+            <div id="objectEditor" class="object-editor"></div>
+          </section>
+        </div>
+
+        <div class="tab-page" id="tab-generator">
+          <section class="card">
+            <h2>SVG 역산 생성기</h2>
+            <label class="field"><span>오브젝트 수</span><input id="objectCount" type="range" min="2" max="7" step="1" value="5" /><output id="objectCountOut">5</output></label>
+            <label class="field"><span>탐색 횟수</span><input id="iterationCount" type="range" min="40" max="600" step="20" value="240" /><output id="iterationCountOut">240</output></label>
+            <label class="field"><span>목표 밖 그림자 벌점</span><input id="extraPenalty" type="range" min="1" max="3" step="0.1" value="1.8" /><output id="extraPenaltyOut">1.8</output></label>
+            <div class="button-row">
+              <button id="generateBtn" class="button primary">SVG에서 답안 탐색</button>
+              <button id="stopBtn" class="button danger" disabled>중지</button>
+            </div>
+            <div class="progress"><div id="progressBar"></div></div>
+            <div class="generator-stats">
+              <span>진행 <strong id="iterationValue">0</strong></span>
+              <span>최고 <strong id="bestScoreValue">0.0%</strong></span>
+            </div>
+          </section>
+
+          <section class="card accent-card">
+            <h2>정답 보장형 레벨</h2>
+            <p>장면과 정답 광원을 먼저 만든 뒤 그 물리 그림자를 목표로 저장하고, 플레이용 광원 위치만 뒤섞습니다.</p>
+            <div class="button-row">
+              <button id="guaranteedBtn" class="button primary">보장형 레벨 만들기</button>
+              <button id="scrambleBtn" class="button secondary">광원만 뒤섞기</button>
+            </div>
+          </section>
+
+          <section class="card">
+            <h2>검증</h2>
+            <div id="validationResults" class="validation-results"></div>
+            <button id="validateBtn" class="button secondary wide">현재 레벨 검증</button>
+          </section>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" role="status"></div>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
