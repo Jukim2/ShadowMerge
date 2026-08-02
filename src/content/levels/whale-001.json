@@ -1,0 +1,19 @@
+{
+  "id": "whale-001",
+  "label": "고래",
+  "chapter": "OBSERVATORY",
+  "themeId": "brass-observatory",
+  "seed": 1107,
+  "maskSize": 128,
+  "initialEuler": [0.82, -0.96, 0.34],
+  "solutionEuler": [0, 0, 0],
+  "scoring": {
+    "completionScore": 96,
+    "holdDurationMs": 450
+  },
+  "hints": [
+    "아주 오래전부터 바다를 건너왔습니다.",
+    "지느러미 대신 빛 속에서 헤엄칩니다.",
+    "고래"
+  ]
+}
